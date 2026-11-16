@@ -1,0 +1,200 @@
+{
+  "version": 1,
+  "models": [
+    {
+      "id": "speech",
+      "name": "Speech",
+      "repository": "hexgrad/Kokoro-82M",
+      "license": "Apache-2.0",
+      "license_url": "https://www.apache.org/licenses/LICENSE-2.0",
+      "revision": "f3ff3571791e39611d31c381e3a41a3af07b4987",
+      "bytes": 329838060,
+      "files": [
+        {
+          "path": "README.md",
+          "size": 6348,
+          "sha256": "91dcabced89db6f109b8786642f50402d3ee87450e8189589b6f85520e7f4d78",
+          "url": "https://huggingface.co/hexgrad/Kokoro-82M/resolve/f3ff3571791e39611d31c381e3a41a3af07b4987/README.md"
+        },
+        {
+          "path": "config.json",
+          "size": 2351,
+          "sha256": "5abb01e2403b072bf03d04fde160443e209d7a0dad49a423be15196b9b43c17f",
+          "url": "https://huggingface.co/hexgrad/Kokoro-82M/resolve/f3ff3571791e39611d31c381e3a41a3af07b4987/config.json"
+        },
+        {
+          "path": "kokoro-v1_0.pth",
+          "size": 327212226,
+          "sha256": "496dba118d1a58f5f3db2efc88dbdc216e0483fc89fe6e47ee1f2c53f18ad1e4",
+          "url": "https://huggingface.co/hexgrad/Kokoro-82M/resolve/f3ff3571791e39611d31c381e3a41a3af07b4987/kokoro-v1_0.pth"
+        },
+        {
+          "path": "voices/af_heart.pt",
+          "size": 523425,
+          "sha256": "0ab5709b8ffab19bfd849cd11d98f75b60af7733253ad0d67b12382a102cb4ff",
+          "url": "https://huggingface.co/hexgrad/Kokoro-82M/resolve/f3ff3571791e39611d31c381e3a41a3af07b4987/voices/af_heart.pt"
+        },
+        {
+          "path": "voices/af_bella.pt",
+          "size": 523425,
+          "sha256": "8cb64e02fcc8de0327a8e13817e49c76c945ecf0052ceac97d3081480e8e48d6",
+          "url": "https://huggingface.co/hexgrad/Kokoro-82M/resolve/f3ff3571791e39611d31c381e3a41a3af07b4987/voices/af_bella.pt"
+        },
+        {
+          "path": "voices/am_michael.pt",
+          "size": 523435,
+          "sha256": "9a443b79a4b22489a5b0ab7c651a0bcd1a30bef675c28333f06971abbd47bd37",
+          "url": "https://huggingface.co/hexgrad/Kokoro-82M/resolve/f3ff3571791e39611d31c381e3a41a3af07b4987/voices/am_michael.pt"
+        },
+        {
+          "path": "voices/bf_emma.pt",
+          "size": 523420,
+          "sha256": "d0a423deabf4a52b4f49318c51742c54e21bb89bbbe9a12141e7758ddb5da701",
+          "url": "https://huggingface.co/hexgrad/Kokoro-82M/resolve/f3ff3571791e39611d31c381e3a41a3af07b4987/voices/bf_emma.pt"
+        },
+        {
+          "path": "voices/bm_george.pt",
+          "size": 523430,
+          "sha256": "f1bc812213dc59774769e5c80004b13eeb79bd78130b11b2d7f934542dab811b",
+          "url": "https://huggingface.co/hexgrad/Kokoro-82M/resolve/f3ff3571791e39611d31c381e3a41a3af07b4987/voices/bm_george.pt"
+        }
+      ]
+    },
+    {
+      "id": "cleanup",
+      "name": "Enhanced PDF cleanup",
+      "repository": "MoritzLaurer/deberta-v3-large-zeroshot-v2.0",
+      "license": "MIT",
+      "license_url": "https://huggingface.co/MoritzLaurer/deberta-v3-large-zeroshot-v2.0",
+      "revision": "cf44676c28ba7312e5c5f8f8d2c22b3e0c9cdae2",
+      "bytes": 878857388,
+      "files": [
+        {
+          "path": "README.md",
+          "size": 21118,
+          "sha256": "424801aa7cc4e93e6639a504e47867d4ec537c94e2437b9fddb3b6bf80c26628",
+          "url": "https://huggingface.co/MoritzLaurer/deberta-v3-large-zeroshot-v2.0/resolve/cf44676c28ba7312e5c5f8f8d2c22b3e0c9cdae2/README.md"
+        },
+        {
+          "path": "added_tokens.json",
+          "size": 23,
+          "sha256": "dc046d04c9b0ada7ae6f1dc89c465801799acdf0c9a6aab8c15a1b2d5ca4e91f",
+          "url": "https://huggingface.co/MoritzLaurer/deberta-v3-large-zeroshot-v2.0/resolve/cf44676c28ba7312e5c5f8f8d2c22b3e0c9cdae2/added_tokens.json"
+        },
+        {
+          "path": "config.json",
+          "size": 1019,
+          "sha256": "3b0a2a3fb311037ba72670d87cbd16f920581985178547a76936dfdb292e5271",
+          "url": "https://huggingface.co/MoritzLaurer/deberta-v3-large-zeroshot-v2.0/resolve/cf44676c28ba7312e5c5f8f8d2c22b3e0c9cdae2/config.json"
+        },
+        {
+          "path": "model.safetensors",
+          "size": 870176356,
+          "sha256": "2031ec34340911b2cecf4f95f5e24db91b2a5d7ea0fa1e704e9cd6d61585e477",
+          "url": "https://huggingface.co/MoritzLaurer/deberta-v3-large-zeroshot-v2.0/resolve/cf44676c28ba7312e5c5f8f8d2c22b3e0c9cdae2/model.safetensors"
+        },
+        {
+          "path": "special_tokens_map.json",
+          "size": 970,
+          "sha256": "b2f1b2f15f29a6b6d9d6ea4eca1675d2c231a71477f151d48f79cc83a625ba21",
+          "url": "https://huggingface.co/MoritzLaurer/deberta-v3-large-zeroshot-v2.0/resolve/cf44676c28ba7312e5c5f8f8d2c22b3e0c9cdae2/special_tokens_map.json"
+        },
+        {
+          "path": "tokenizer.json",
+          "size": 8656646,
+          "sha256": "05402ffae6dd382a8491b1d29bfc139bec5d332662e86a026f433ce54c25c202",
+          "url": "https://huggingface.co/MoritzLaurer/deberta-v3-large-zeroshot-v2.0/resolve/cf44676c28ba7312e5c5f8f8d2c22b3e0c9cdae2/tokenizer.json"
+        },
+        {
+          "path": "tokenizer_config.json",
+          "size": 1256,
+          "sha256": "f5a1a74a632c0e9225e09a21ddf60c2e70ef5d3bfc1f261a24fd8ddab27254d2",
+          "url": "https://huggingface.co/MoritzLaurer/deberta-v3-large-zeroshot-v2.0/resolve/cf44676c28ba7312e5c5f8f8d2c22b3e0c9cdae2/tokenizer_config.json"
+        }
+      ]
+    },
+    {
+      "id": "chat",
+      "name": "Paper chat",
+      "repository": "mlx-community/Qwen3.5-9B-MLX-4bit",
+      "license": "Apache-2.0",
+      "license_url": "https://www.apache.org/licenses/LICENSE-2.0",
+      "revision": "938d8919941c6e7efd3c7150eff7fe9d12afa631",
+      "bytes": 5977073021,
+      "files": [
+        {
+          "path": "README.md",
+          "size": 1954,
+          "sha256": "7cbe4c3e07a5465d52d60c94c71f8d578113550eb767d331553f9ca19538ce56",
+          "url": "https://huggingface.co/mlx-community/Qwen3.5-9B-MLX-4bit/resolve/938d8919941c6e7efd3c7150eff7fe9d12afa631/README.md"
+        },
+        {
+          "path": "chat_template.jinja",
+          "size": 7756,
+          "sha256": "a4aee8afcf2e0711942cf848899be66016f8d14a889ff9ede07bca099c28f715",
+          "url": "https://huggingface.co/mlx-community/Qwen3.5-9B-MLX-4bit/resolve/938d8919941c6e7efd3c7150eff7fe9d12afa631/chat_template.jinja"
+        },
+        {
+          "path": "config.json",
+          "size": 3331,
+          "sha256": "a96942cb6a8a1d3f1d17514d81a1925d04362a6a3233b389d13012211baaa9f8",
+          "url": "https://huggingface.co/mlx-community/Qwen3.5-9B-MLX-4bit/resolve/938d8919941c6e7efd3c7150eff7fe9d12afa631/config.json"
+        },
+        {
+          "path": "model-00001-of-00002.safetensors",
+          "size": 5349771222,
+          "sha256": "a68b87558c6ef43f74c2bd63ce7e9092ceddc3101f3def0030774bae5f42aadd",
+          "url": "https://huggingface.co/mlx-community/Qwen3.5-9B-MLX-4bit/resolve/938d8919941c6e7efd3c7150eff7fe9d12afa631/model-00001-of-00002.safetensors"
+        },
+        {
+          "path": "model-00002-of-00002.safetensors",
+          "size": 600449850,
+          "sha256": "b0a770bf8469c7f3f18756a0e0283f1c1174344a83e059a4e483f6af4907352d",
+          "url": "https://huggingface.co/mlx-community/Qwen3.5-9B-MLX-4bit/resolve/938d8919941c6e7efd3c7150eff7fe9d12afa631/model-00002-of-00002.safetensors"
+        },
+        {
+          "path": "model.safetensors.index.json",
+          "size": 123592,
+          "sha256": "dd023913fb87cfdae27fb11dcf695117c925833796ccac3c64117d6652d8ff1e",
+          "url": "https://huggingface.co/mlx-community/Qwen3.5-9B-MLX-4bit/resolve/938d8919941c6e7efd3c7150eff7fe9d12afa631/model.safetensors.index.json"
+        },
+        {
+          "path": "preprocessor_config.json",
+          "size": 390,
+          "sha256": "27225450ac9c6529872ee1924fcb0962ff5634834f817040f444118116f4e516",
+          "url": "https://huggingface.co/mlx-community/Qwen3.5-9B-MLX-4bit/resolve/938d8919941c6e7efd3c7150eff7fe9d12afa631/preprocessor_config.json"
+        },
+        {
+          "path": "processor_config.json",
+          "size": 1300,
+          "sha256": "14932921ca485d458a04dafd8069fbb0a4505622a48208d19ed247115801385b",
+          "url": "https://huggingface.co/mlx-community/Qwen3.5-9B-MLX-4bit/resolve/938d8919941c6e7efd3c7150eff7fe9d12afa631/processor_config.json"
+        },
+        {
+          "path": "tokenizer.json",
+          "size": 19989343,
+          "sha256": "87a7830d63fcf43bf241c3c5242e96e62dd3fdc29224ca26fed8ea333db72de4",
+          "url": "https://huggingface.co/mlx-community/Qwen3.5-9B-MLX-4bit/resolve/938d8919941c6e7efd3c7150eff7fe9d12afa631/tokenizer.json"
+        },
+        {
+          "path": "tokenizer_config.json",
+          "size": 1139,
+          "sha256": "e98f1901ac6f0adff67b1d540bfa0c36ac1a0cf59eb72ed78146ef89aafa1182",
+          "url": "https://huggingface.co/mlx-community/Qwen3.5-9B-MLX-4bit/resolve/938d8919941c6e7efd3c7150eff7fe9d12afa631/tokenizer_config.json"
+        },
+        {
+          "path": "video_preprocessor_config.json",
+          "size": 385,
+          "sha256": "7768af27c1fafa9cc9011c1dc20067e03f8915e03b63504550e11d5066986d13",
+          "url": "https://huggingface.co/mlx-community/Qwen3.5-9B-MLX-4bit/resolve/938d8919941c6e7efd3c7150eff7fe9d12afa631/video_preprocessor_config.json"
+        },
+        {
+          "path": "vocab.json",
+          "size": 6722759,
+          "sha256": "ce99b4cb2983d118806ce0a8b777a35b093e2000a503ebde25853284c9dfa003",
+          "url": "https://huggingface.co/mlx-community/Qwen3.5-9B-MLX-4bit/resolve/938d8919941c6e7efd3c7150eff7fe9d12afa631/vocab.json"
+        }
+      ]
+    }
+  ]
+}

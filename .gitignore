@@ -1,0 +1,26 @@
+# Never commit personal library content, backups, or exports.
+ReaderData/
+**/ReaderData/
+*.sqlite
+*.sqlite-*
+*.sqlite3
+*.sqlite3-*
+*.db
+*.db-*
+.reader-lock
+.reader.lock
+# Build products and local IDE state.
+.build/
+build/
+.swiftpm/
+.DS_Store
+*.xcuserstate
+xcuserdata/
+# Regenerable local narration runtime, models, caches and staging.
+ReaderRuntime/
+# Regenerable local AI runtime and model dependencies.
+.ReaderRuntime-setup.*/
+# Local publication drafts, demo libraries and evidence. Final screenshots are in docs/images.
+.publication/
+__pycache__/
+*.pyc
