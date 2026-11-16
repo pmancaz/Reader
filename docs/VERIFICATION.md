@@ -74,6 +74,7 @@ The publication pass changed the default library/runtime paths to follow the sou
 Fresh checks for these changes:
 
 - Release `Reader` build passed with `swift build --build-system native --configuration release --product Reader`.
+- A fresh public clone ran `./scripts/build.sh release` successfully without `ReaderRuntime`, and the resulting app passed `codesign --verify --deep --strict`. This used the installed Swift toolchain, rather than a clean operating system.
 - `ReaderCoreChecks` passed all eight storage checks.
 - A separately copied ReaderCore checkout compiled and returned its own `ReaderData` path, rather than the original developer path.
 - `bash -n scripts/setup-narration.sh` passed. Narration setup still requires a prepared R2M runtime and downloaded model sets; a clean-machine dependency bootstrap was not tested.
