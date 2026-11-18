@@ -14,6 +14,7 @@ else
   python3 -B -m unittest discover -s Tests -p test_narration_worker.py -v
   echo 'PDF extraction regressions require the optional narration runtime setup.'
 fi
+python3 -B -m unittest discover -s Tests -p test_comparison_library.py -v
 ./scripts/build.sh debug
 VERIFY_TEMP="$(mktemp -d "${TMPDIR:-/tmp}/Reader-check.XXXXXX")"
 FIXTURE_PID=""
@@ -35,10 +36,13 @@ export READER_FIXTURE_BASE_URL="http://127.0.0.1:$(cat "$VERIFY_TEMP/port")"
 # These opt-in verifier modes create isolated temporary libraries only.
 python3 - "$ROOT/build/Reader.app/Contents/MacOS/Reader" <<'PY'
 import os, subprocess, sys
-modes = ['--verify-imports', '--verify-reading']
-if os.environ.get('READER_VERIFY_NARRATION') == '1': modes.append('--verify-narration')
+modes = ['--verify-imports', '--verify-reading', '--verify-printing']
+if os.access('ReaderRuntime/bin/ffmpeg', os.X_OK):
+    modes.append('--verify-openai')
+if os.environ.get('READER_VERIFY_NARRATION') == '1':
+    modes.extend(['--verify-providers', '--verify-narration'])
 for mode in modes:
-    result = subprocess.run([sys.argv[1], mode], timeout=600 if mode == '--verify-narration' else 240)
+    result = subprocess.run([sys.argv[1], mode], timeout=600 if mode in ('--verify-narration', '--verify-providers') else 240)
     if result.returncode:
         raise SystemExit(result.returncode)
 PY

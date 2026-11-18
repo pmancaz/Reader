@@ -34,12 +34,21 @@ import ReaderCore
             }
         }
         do {
-            let model = AppModel()
+            let suiteName = "Reader.NarrationVerification.\(UUID().uuidString)"
+            let defaults = UserDefaults(suiteName: suiteName)!
+            defer { defaults.removePersistentDomain(forName: suiteName) }
+            let controller = NarrationController(defaults: defaults, usesOpenAI: false)
+            let model = AppModel(narrationController: controller)
             model.openLibrary(root, create: true)
             let store = try required(model.store, model.libraryError ?? "Temporary narration library did not open")
             let narrator = model.narrator
             defer { narrator.cancel(); narrator.stopPlayback(); store.close() }
             try check(narrator.isReady, "Reader-owned local inference runtime and model copies are ready")
+            narrator.voice = "af_bella"; narrator.speed = 1.2; narrator.cleanText = false; narrator.keepReferences = true
+            let restoredSettings = NarrationController(defaults: defaults, usesOpenAI: false)
+            try check(restoredSettings.voice == "af_bella" && restoredSettings.speed == 1.2 && !restoredSettings.cleanText && restoredSettings.keepReferences,
+                      "Voice, speed, cleanup and reference defaults persist in Settings")
+            narrator.resetGenerationDefaults()
             let fixtureText = """
             A quiet reading practice
 
@@ -62,11 +71,28 @@ import ReaderCore
             let article = ReaderItem(title: "A quiet reading practice", kind: .article,
                                      originalURL: "https://example.com/reader-narration-fixture", contentPath: "article.html", text: fixtureText)
             try store.addItem(article, from: staged)
+            let otherArticle = ReaderItem(title: "Another paper to read", kind: .article, contentPath: "article.html", text: fixtureText)
+            try store.addItem(otherArticle, from: staged)
             try model.refresh(); model.select(article.id)
             let managedArticle = try store.contentURL(for: article)
             let articleHash = try hash(managedArticle)
-            narrator.generate(item: article, store: store)
+            try check(model.narrationActionTitle == "Create narration" && model.canPerformNarrationAction,
+                      "An unnarrated document offers the one-click Create narration action")
+            model.performNarrationAction()
             try check(narrator.isBusy, "Native controller launches asynchronous article narration")
+            try check(narrator.activeItemID == article.id && model.narrationActionTitle == "Generating narration…" && !model.showNarration,
+                      "Create narration starts inline progress without a modal panel")
+            let readingProgress = ReadingProgress(fraction: 0.37)
+            model.progress(id: article.id, value: readingProgress)
+            let backgroundNote = ReaderAnnotation(itemID: article.id, note: "Written while narration runs in the background")
+            model.addAnnotation(backgroundNote)
+            model.select(otherArticle.id)
+            try check(model.selectedID == otherArticle.id && narrator.isGenerating(article.id) && !narrator.isGenerating(otherArticle.id),
+                      "The reader can change documents while progress remains attached to the generating article")
+            try check(!model.canPerformNarrationAction && model.narrationActionTitle == "Create narration",
+                      "Another unsaved document does not inherit the first article's generation state")
+            model.select(article.id)
+            narrator.voice = "af_bella"; narrator.speed = 1.3; narrator.cleanText = false; narrator.keepReferences = true
             try await wait(narrator)
             let narratedArticle = try required(try store.item(id: article.id), "Narrated article missing")
             let articleRecord = try required(narratedArticle.narration, narrator.error ?? "Article narration produced no committed result")
@@ -75,6 +101,14 @@ import ReaderCore
             let articleAudio = try required(try store.narrationAudioURL(for: narratedArticle), "Article MP3 missing")
             let articleScript = try required(try store.narrationScriptURL(for: narratedArticle), "Article script missing")
             let articleDirectory = articleAudio.deletingLastPathComponent()
+            try check(model.narrationActionTitle == "Play narration" && !narrator.isBusy && narrator.activeItemID == nil && !model.showNarration,
+                      "Completion replaces inline generation with Play narration automatically")
+            let request = try dictionary(articleDirectory.appendingPathComponent("request.json"))
+            try check(articleRecord.voice == "af_heart" && articleRecord.speed == 1 && request["cleanText"] as? Bool == true && request["keepReferences"] as? Bool == false,
+                      "Changing Settings during generation does not alter the running job's defaults")
+            try check((try store.item(id: article.id)?.progress) == readingProgress && (try store.annotations(itemID: article.id)).contains(where: { $0.id == backgroundNote.id && $0.note == backgroundNote.note }),
+                      "Reading position and notes written during generation survive the narration commit")
+            narrator.resetGenerationDefaults()
             try check(articleAudio.standardizedFileURL.path.hasPrefix(root.standardizedFileURL.path + "/Items/"), "Completed MP3 is managed inside the configured library")
             let decoded = try AVAudioPlayer(contentsOf: articleAudio)
             try check(decoded.duration > 2 && decoded.prepareToPlay(), "AVAudioPlayer decodes the generated article MP3")
@@ -92,9 +126,18 @@ import ReaderCore
 
             // Exercise real player loading and position persistence, including a
             // stale item snapshot, without prolonged audible playback.
-            narrator.togglePlayback(item: narratedArticle, store: store)
-            let resumeAt = min(2.0, max(0.5, narrator.duration / 4))
+            let resumeAt = min(2.0, max(0.5, decoded.duration / 4))
+            narrator.seek(resumeAt, item: narratedArticle, store: store)
+            try check(!narrator.isPlaying && abs(narrator.position - resumeAt) < 0.2,
+                      "The inline seek bar can set a saved position before pressing Play")
+            model.performNarrationAction()
+            try check(narrator.isPlaying && !narrator.isBusy && narrator.jobDirectory == nil && (try store.item(id: article.id)?.narration?.id) == articleRecord.id,
+                      "Play narration reuses the saved MP3 without starting another generation")
+            model.performNarrationAction()
+            try check(!narrator.isPlaying && model.narrationActionTitle == "Play narration", "The primary action toggles Play and Pause")
             narrator.seek(resumeAt); narrator.stopPlayback()
+            try check(abs((model.items.first(where: { $0.id == article.id })?.narration?.playbackPosition ?? -1) - resumeAt) < 0.2,
+                      "The document's seek bar retains its latest position when the player unloads")
             let savedPosition = try required(try store.item(id: article.id)?.narration?.playbackPosition, "Playback position missing")
             try check(abs(savedPosition - resumeAt) < 0.2, "Native playback seek and stop persist the audio position")
             narrator.togglePlayback(item: narratedArticle, store: store)
@@ -116,6 +159,9 @@ import ReaderCore
             let managedPDF = try store.contentURL(for: pdfItem)
             narrator.generate(item: pdfItem, store: store)
             try check(narrator.isBusy, "Native controller launches the managed PDF narration path")
+            model.select(article.id); model.performNarrationAction()
+            try check(narrator.isPlaying && narrator.isGenerating(pdfItem.id), "A saved narration can play while another document generates in the background")
+            model.performNarrationAction(); narrator.stopPlayback()
             try await wait(narrator)
             let narratedPDF = try required(try store.item(id: pdfItem.id), "Narrated PDF missing")
             let pdfRecord = try required(narratedPDF.narration, narrator.error ?? "PDF narration produced no committed result")
@@ -161,6 +207,15 @@ import ReaderCore
                       "Both generated narration records persist after database close/reopen")
             try check(abs((reopenedArticle.narration?.playbackPosition ?? -1) - savedPosition) < 0.2,
                       "Audio playback progress survives library reopen")
+            let offlineDefaultsName = "Reader.OfflinePlaybackVerification.\(UUID().uuidString)"
+            let offlineDefaults = UserDefaults(suiteName: offlineDefaultsName)!
+            defer { offlineDefaults.removePersistentDomain(forName: offlineDefaultsName) }
+            offlineDefaults.set(root.appendingPathComponent("Models-not-installed").path, forKey: "narrationModels")
+            let coldPlayer = NarrationController(defaults: offlineDefaults, usesOpenAI: false)
+            coldPlayer.togglePlayback(item: reopenedArticle, store: reopened)
+            try check(!coldPlayer.isReady && coldPlayer.isPlaying && coldPlayer.duration > 2 && !coldPlayer.isBusy && coldPlayer.jobDirectory == nil,
+                      "A fresh controller plays saved audio after library reopen with generation models unavailable")
+            coldPlayer.seek(savedPosition); coldPlayer.stopPlayback()
             let snapshot = root.deletingLastPathComponent().appendingPathComponent("ReaderNarrationSnapshot-\(UUID().uuidString)")
             let restoredRoot = root.deletingLastPathComponent().appendingPathComponent("ReaderNarrationRestore-\(UUID().uuidString)")
             try reopened.exportLibrary(to: snapshot); try LibraryStore.restore(from: snapshot, to: restoredRoot)

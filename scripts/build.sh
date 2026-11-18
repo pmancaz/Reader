@@ -2,17 +2,23 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CONFIGURATION="${1:-release}"
+FLAVOUR="${2:-local}"
 if [[ "$CONFIGURATION" != "release" && "$CONFIGURATION" != "debug" ]]; then
-  echo 'Usage: scripts/build.sh [release|debug]' >&2
+  echo 'Usage: scripts/build.sh [release|debug] [openai|local]' >&2
   exit 2
 fi
+case "$FLAVOUR" in
+  openai) APP_NAME='Reader OpenAI'; BUNDLE_ID='au.pcarroll.Reader.OpenAI'; VERSION='0.3.2'; BUILD_NUMBER='5' ;;
+  local) APP_NAME='Reader'; BUNDLE_ID='au.pcarroll.Reader'; VERSION='0.3.2'; BUILD_NUMBER='5' ;;
+  *) echo 'Choose openai or local.' >&2; exit 2 ;;
+esac
 cd "$ROOT"
 swift build --build-system native --configuration "$CONFIGURATION" --product Reader
 BIN_DIR="$(swift build --build-system native --configuration "$CONFIGURATION" --show-bin-path)"
-APP="$ROOT/build/Reader.app"
+APP="$ROOT/build/$APP_NAME.app"
 mkdir -p "$ROOT/build"
-# This script only replaces build/Reader.app. It never touches ReaderData.
-if [[ "$APP" != "$ROOT/build/Reader.app" ]]; then exit 3; fi
+# Separate app identities keep the installed local version available.
+if [[ "$APP" != "$ROOT/build/Reader.app" && "$APP" != "$ROOT/build/Reader OpenAI.app" ]]; then exit 3; fi
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN_DIR/Reader" "$APP/Contents/MacOS/Reader"
@@ -24,7 +30,16 @@ done
 # Narration dependencies are installed once with setup-narration.sh. Runtime
 # binaries are copied into the app; model weights stay in the regenerable
 # project ReaderRuntime/Models folder rather than enlarging every app build.
-if [[ -x "$ROOT/ReaderRuntime/runtime/bin/python3.11" && -x "$ROOT/ReaderRuntime/bin/ffmpeg" ]]; then
+if [[ -x "$ROOT/ReaderRuntime/bin/ffmpeg" && ( "$FLAVOUR" == 'openai' || ! -x "$ROOT/ReaderRuntime/runtime/bin/python3.11" ) ]]; then
+  NARRATION_RUNTIME="$APP/Contents/Resources/NarrationRuntime"
+  mkdir -p "$NARRATION_RUNTIME/bin"
+  cp "$ROOT/ReaderRuntime/bin/ffmpeg" "$NARRATION_RUNTIME/bin/ffmpeg"
+  for NOTICE in "$ROOT/ReaderRuntime/bin"/*.txt; do cp "$NOTICE" "$NARRATION_RUNTIME/bin/"; done
+  if [[ -d "$ROOT/ReaderRuntime/Licenses" ]]; then /usr/bin/ditto "$ROOT/ReaderRuntime/Licenses" "$NARRATION_RUNTIME/Licenses"; fi
+  for NOTICE in "$ROOT/ReaderRuntime"/THIRD_PARTY* "$ROOT/ReaderRuntime"/LICENSE*; do
+    if [[ -f "$NOTICE" ]]; then cp "$NOTICE" "$NARRATION_RUNTIME/"; fi
+  done
+elif [[ "$FLAVOUR" == 'local' && -x "$ROOT/ReaderRuntime/runtime/bin/python3.11" && -x "$ROOT/ReaderRuntime/bin/ffmpeg" ]]; then
   NARRATION_RUNTIME="$APP/Contents/Resources/NarrationRuntime"
   mkdir -p "$NARRATION_RUNTIME"
   # Clone on APFS when possible; the app remains independent of the source.
@@ -41,24 +56,25 @@ if [[ -x "$ROOT/ReaderRuntime/runtime/bin/python3.11" && -x "$ROOT/ReaderRuntime
     if [[ -f "$NOTICE" ]]; then cp "$NOTICE" "$NARRATION_RUNTIME/"; fi
   done
 else
-  echo 'Narration runtime is not installed; run scripts/setup-narration.sh to enable local narration.' >&2
+  echo 'Narration encoder/runtime is missing; see docs/NARRATION.md.' >&2
 fi
 if [[ -f "$ROOT/assets/Reader.icns" ]]; then
   cp "$ROOT/assets/Reader.icns" "$APP/Contents/Resources/Reader.icns"
 fi
-cat > "$APP/Contents/Info.plist" <<'PLIST'
+cat > "$APP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
 <key>CFBundleDevelopmentRegion</key><string>en</string>
 <key>CFBundleExecutable</key><string>Reader</string>
-<key>CFBundleIdentifier</key><string>au.pcarroll.Reader</string>
+<key>CFBundleIdentifier</key><string>$BUNDLE_ID</string>
 <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
-<key>CFBundleName</key><string>Reader</string>
-<key>CFBundleDisplayName</key><string>Reader</string>
+<key>CFBundleName</key><string>$APP_NAME</string>
+<key>CFBundleDisplayName</key><string>$APP_NAME</string>
+<key>ReaderNarrationProvider</key><string>$FLAVOUR</string>
 <key>CFBundlePackageType</key><string>APPL</string>
-<key>CFBundleShortVersionString</key><string>0.1.0</string>
-<key>CFBundleVersion</key><string>1</string>
+<key>CFBundleShortVersionString</key><string>$VERSION</string>
+<key>CFBundleVersion</key><string>$BUILD_NUMBER</string>
 <key>CFBundleIconFile</key><string>Reader</string>
 <key>LSMinimumSystemVersion</key><string>14.0</string>
 <key>LSApplicationCategoryType</key><string>public.app-category.productivity</string>

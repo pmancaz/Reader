@@ -16,8 +16,12 @@ final class ReaderBridge: ObservableObject {
     var onProgress: ((String, ReadingProgress) -> Void)?
     var onAnnotation: ((ReaderAnnotation) -> Void)?
     var articleAnchors: [ReaderAnnotation] = []
+    var isOriginal = false
+    var pendingNavigation: ReaderAnnotation?
+    var onRequestReader: (() -> Void)?
 
     func highlight(withNote: Bool = false) {
+        guard !isOriginal else { notice = "Switch to Reader view to highlight a passage."; return }
         guard let item else { return }
         if item.kind == .pdf, let view = pdfView, let selection = view.currentSelection,
            let text = selection.string, !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
@@ -46,6 +50,7 @@ final class ReaderBridge: ObservableObject {
     }
 
     func navigate(to annotation: ReaderAnnotation) {
+        if isOriginal { pendingNavigation = annotation; onRequestReader?(); return }
         if let rect = annotation.pdfRects.first, let view = pdfView, let page = view.document?.page(at: rect.pageIndex) {
             view.go(to: page)
             view.go(to: CGRect(x: rect.x, y: rect.y, width: rect.width, height: rect.height).insetBy(dx: -12, dy: -40), on: page)
@@ -54,6 +59,11 @@ final class ReaderBridge: ObservableObject {
                 if found as? Bool == false { self?.notice = "This passage could not be located in the saved text." }
             }
         }
+    }
+    func resumeNavigation() {
+        guard !isOriginal, let annotation = pendingNavigation else { return }
+        pendingNavigation = nil
+        if item?.id == annotation.itemID { navigate(to: annotation) }
     }
     func zoom(_ delta: Int) {
         guard let view = pdfView else { return }
@@ -87,6 +97,7 @@ struct NativePDFReader: NSViewRepresentable {
     let url: URL
     let item: ReaderItem
     let annotations: [ReaderAnnotation]
+    var original = false
     @ObservedObject var bridge: ReaderBridge
     func makeCoordinator() -> Coordinator { Coordinator(bridge: bridge) }
     func makeNSView(context: Context) -> PDFView {
@@ -103,6 +114,7 @@ struct NativePDFReader: NSViewRepresentable {
         bridge.pdfView = view
         bridge.webView = nil
         bridge.item = item
+        bridge.isOriginal = original
         if context.coordinator.loaded != item.id {
             context.coordinator.loaded = item.id
             context.coordinator.signature = ""
@@ -128,6 +140,7 @@ struct NativePDFReader: NSViewRepresentable {
             }
         }
         context.coordinator.apply(annotations, to: view)
+        if !original, bridge.pendingNavigation != nil { DispatchQueue.main.async { bridge.resumeNavigation() } }
     }
     static func dismantleNSView(_ view: PDFView, coordinator: Coordinator) { coordinator.savePosition(view); coordinator.detach() }
     @MainActor final class Coordinator: NSObject {

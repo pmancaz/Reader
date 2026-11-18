@@ -82,3 +82,61 @@ Fresh checks for these changes:
 - Both publication screenshots use original example text in an isolated library. The personal Reader library was not used for screenshots.
 
 The earlier 108-check verification record above belongs to the initial build; the whole suite was not rerun for this documentation and path-portability pass. The source publication includes no installer, runtime binaries, weights or personal reading data. No application-wide licence was selected.
+
+## 0.2.0 — A4 printing, tags and Original view (17 November 2026)
+
+Fresh automated checks passed: **98 total** — eight ReaderCore checks, 23 import/WebKit checks, 43 native reading checks and 24 printing/tag/Original checks. Import, native reading and the new feature checks were also run successfully through the final signed release app, using isolated temporary libraries. No personal reading content was used as a test fixture.
+
+The native print pipeline produced a multipage A4 article and a three-page fitted A4 PDF. Checks covered every paragraph marker and the final line, all prose words from 120 repeated body/table passages, all 12 table rows, long unbroken code/references, a large figure/caption, selectable text from all three PDF pages (including the rotated page), safe article text margins on every page, and byte-for-byte preservation of both sources. PDF text extraction can interleave table columns, so prose preservation compares word counts rather than assuming linear reading order. Both latest PDFs were rendered with Poppler for visual inspection. Print CSS sets A4/15 mm page margins explicitly; WebKit does not use the native margins alone. A heading directly before a figure stays with that figure in the print copy.
+
+Tag checks covered new tags, case/empty duplicates, reuse of existing names, legacy leading-hash tags, sidebar filtering, library search, complete reopen, and preservation of the latest note and reading position during tag edits. The native interface was also used to add tags with Return, save, filter, clear a filter, reuse an existing tag on a PDF, and remove it again.
+
+Original view checks used a local website with its own layout/scripts and a second page: live rendering, ephemeral storage, absence of the Reader message bridge, rejection of local/script URLs, navigation/back, and preservation of the saved offline copy. Native interface checks confirmed switching to Original and returning from a passage note to the saved Reader view. For a PDF, Reader's highlight disappeared in Original and returned when navigating its saved passage note; the source remained untouched.
+
+Command-P opened the macOS print sheet with A4 (210 × 297 mm), portrait orientation, a complete article preview and the PDF menu. Cancelling returned to the app and re-enabled Print. Physical paper output was not attempted; the configured printer reported offline. Very unusual publisher layouts still warrant checking the preview, and live websites may require a browser/login or reject embedded browsing. A clean machine/macOS 14 installation, exhaustive site compatibility and all physical printers were not tested.
+
+The 0.2.0 release passed plist and strict code-signing checks. The app reopened the existing library and restored the previously selected paper.
+
+## 0.3.0 — Inline narration and playback (18 November 2026)
+
+Fresh automated checks passed: **115 total** — eight ReaderCore checks, 23 import/WebKit checks, 43 native reading checks and **41 real local narration checks**. Debug and release builds passed. The narration suite used the actual local cleanup, Kokoro and MP3 pipeline in an isolated temporary library; the import and native reading suites also passed against the release executable. The 0.2.0 printing suite was not rerun because this update does not change printing.
+
+The expanded narration checks cover persisted Settings defaults, one-click creation without a sheet, reading/navigation/notes during generation, progress scoped to the correct document, captured defaults that do not change mid-job, automatic Play state after commit, seeking before playback, Play/Pause without regeneration, position preservation when switching documents, playback while another document generates, and a fresh controller playing saved audio after library reopen with generation models unavailable. Existing cancellation/failure preservation, complete audio export/restore, source-PDF byte preservation and all-page spoken-text checks also passed.
+
+Manual checks used a separately signed release demo app and original example content:
+
+- An existing article immediately offered Play narration with an elapsed/total seek bar. Seeking before Play did not autoplay; Play/Pause and seeking during playback worked.
+- Reader Settings opened with Command-comma. A new PDF narration used the changed speed/reference defaults and displayed inline generation progress. Reading another article and playing its saved recording remained available while that PDF generated. The background Show action returned to the active document.
+- Completion changed the PDF action to Play narration. After seeking, a full quit/relaunch preserved the recording, its position and the changed defaults; playback resumed successfully. Both managed audio IDs and SHA-256 hashes were unchanged across the process restart. Defaults were then restored in the demo app only; the completed recording retained its own settings.
+- `docs/images/reader-narration.jpg` shows the real inline player with original demonstration text, not personal library content.
+
+The 0.3.0 release passed plist and strict code-signing checks. An existing recording opened with Play narration and a seek bar, retaining its position.
+
+Completed audio remains in the managed item's Narrations folder and its database record, with no expiry. Full-process restart and model-free playback were verified; literal passage of several months was not simulated. Unfinished generation requires Reader to remain open. This update does not change model installation, and a clean-machine setup was not tested.
+
+
+## 0.3.1 — OpenAI experiment (18 November 2026)
+
+The separate OpenAI experiment used an ignored `.env.local` file for its API key. The key was absent from the app executable and resources.
+
+The experiment passed 49 final mocked native API checks and 18 real API checks. Actual GPT-5.4 mini cleanup and GPT-Realtime-2.1 mini speech produced an original 17.48-second article and a 73.35-second three-page PDF, including its rotated page. MP3 decode, unchanged source bytes, seek/resume, reopen and complete backup/restore passed. The prior local workflow also passed its full regression checks.
+
+The separately signed experiment used its own preferences and an independent library. Native Settings, seeking before Play, Play/Pause and a full process restart were observed with original test content. The saved playback position survived.
+
+## 0.3.2 — Independent cleanup/audio providers (18 November 2026)
+
+The complete `./scripts/verify.sh --narration` run passed **238 checks**: eight core checks, seven Python narration/PDF checks, four comparison-copy tests, 23 imports/WebKit checks, 43 native reading checks, 24 printing/tags/Original checks, 49 mocked native OpenAI checks, 39 provider-matrix checks using real local models with simulated API responses, and 41 retained real local-narration checks.
+
+A separate **33-check live provider matrix** passed with real OpenAI requests and local inference. It generated article recordings through all four cleanup/audio combinations, plus both mixed combinations for the three-page PDF. The checks verified actual engine/provider provenance, intact original prose and selected reference filtering, native MP3 decode/duration, automatic Play state, all rotated/normal PDF page passages and unchanged PDF bytes. No personal reading content was used as an API test fixture.
+
+Provider preferences and per-provider voices persisted across controllers; an existing British local voice survived switching to API and back. A synthetic API key was saved, read and removed through the actual macOS Keychain API under a unique test service, separate from real credentials. The Settings key field never pre-fills a secret; the already approved .env.local remains a supported fallback. There is no database migration: completed audio uses the existing managed attachment/atomic SQLite commit and backup paths.
+
+The signed **Reader 0.3.2 (5)** release built successfully at `build/Reader.app`. Its affected suites passed again through the release bundle: **49 native mocked OpenAI checks and 39 provider-matrix checks**. Plist validation and `codesign --verify --deep --strict` passed. The complete local runtime is bundled for local stages; model weights remain in ReaderRuntime/Models. The existing API key is ignored by Git, mode 0600, and absent from the app executable and project resources.
+
+Observed native release checks:
+
+- Reader Settings exposed independent Text cleanup and Narration audio popups, a provider-specific Voice popup, readiness status, a masked API-key field and Save key. All four combinations could be selected; local/API stages remained independent and the Voice control changed to the selected audio provider.
+- A full app quit/relaunch was confirmed by release of the personal library writer lock. Local cleanup/API audio and Marin were still selected after reopening Settings; key availability persisted without showing its value.
+- An existing local MP3 and its remembered position remained ready under Play narration while future-generation defaults were set to a mixed route. Narration Details correctly identified the saved audio as local cleanup/local audio, separate from the next-generation defaults. No personal narration was regenerated or sent to OpenAI.
+
+Physical printers, clean-machine local-model setup and all publisher PDF layouts were outside these checks.

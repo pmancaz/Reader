@@ -16,7 +16,7 @@ struct ReaderApp: App {
         ReaderAppDelegate.model = state
     }
     var body: some Scene {
-        WindowGroup("Reader") {
+        WindowGroup(ReaderBuild.name) {
             LibraryWindow().environmentObject(model)
                 .preferredColorScheme(model.appearance == "system" ? nil : model.appearance == "dark" ? .dark : .light)
                 .frame(minWidth: 850, minHeight: 560)
@@ -26,6 +26,10 @@ struct ReaderApp: App {
             CommandGroup(replacing: .newItem) {
                 Button("Import URLs…") { model.showImport = true }.keyboardShortcut("n")
                 Button("Import PDFs…") { model.pickPDFs() }.keyboardShortcut("o")
+            }
+            CommandGroup(replacing: .printItem) {
+                Button("Print…") { model.printSelected() }.keyboardShortcut("p")
+                    .disabled(model.selectedItem == nil || model.printer.isBusy)
             }
             CommandGroup(after: .saveItem) {
                 Button("Back Up Library Now") { model.backup() }
@@ -37,10 +41,15 @@ struct ReaderApp: App {
                 Button("Reveal Library in Finder") { model.reveal() }
             }
             CommandMenu("Reading") {
-                Button("Narration…") { model.showNarration = true }.keyboardShortcut("l", modifiers: [.command, .shift]).disabled(model.selectedItem == nil)
+                Button(model.narrationActionTitle) { model.performNarrationAction() }.keyboardShortcut("l", modifiers: [.command, .shift]).disabled(!model.canPerformNarrationAction)
+                Button("Narration Details…") { model.showNarration = true }.disabled(model.selectedItem == nil)
                 Button("Toggle Notes Panel") { model.showNotes.toggle() }.keyboardShortcut("n", modifiers: [.command, .shift])
                 Button("Distraction-Free Reading") { model.focusedReading.toggle() }.keyboardShortcut("d", modifiers: [.command, .shift])
             }
+        }
+        Settings {
+            NarrationSettings(narration: model.narrator)
+                .preferredColorScheme(model.appearance == "system" ? nil : model.appearance == "dark" ? .dark : .light)
         }
     }
 }
@@ -51,7 +60,7 @@ struct ReaderApp: App {
         NSApp.setActivationPolicy(.regular)
         NSApp.activate(ignoringOtherApps: true)
         NotificationCenter.default.addObserver(forName: NSWindow.didBecomeKeyNotification, object: nil, queue: .main) { note in
-            guard let window = note.object as? NSWindow, !(window is NSPanel), window.title == "Reader" else { return }
+            guard let window = note.object as? NSWindow, !(window is NSPanel), window.title == ReaderBuild.name else { return }
             window.delegate = self
         }
         if ProcessInfo.processInfo.arguments.contains("--verify-imports") {
@@ -62,6 +71,17 @@ struct ReaderApp: App {
         }
         if ProcessInfo.processInfo.arguments.contains("--verify-reading") {
             Task { let success = await ReadingVerification.run(); fflush(stdout); exit(success ? 0 : 1) }
+        }
+        if ProcessInfo.processInfo.arguments.contains("--verify-printing") {
+            Task { let success = await PrintingVerification.run(); fflush(stdout); exit(success ? 0 : 1) }
+        }
+        if ProcessInfo.processInfo.arguments.contains("--verify-openai") || ProcessInfo.processInfo.arguments.contains("--verify-openai-live") {
+            let live = ProcessInfo.processInfo.arguments.contains("--verify-openai-live")
+            Task { let success = await OpenAIVerification.run(live: live); fflush(stdout); exit(success ? 0 : 1) }
+        }
+        if ProcessInfo.processInfo.arguments.contains("--verify-providers") || ProcessInfo.processInfo.arguments.contains("--verify-providers-live") {
+            let live = ProcessInfo.processInfo.arguments.contains("--verify-providers-live")
+            Task { let success = await OpenAIVerification.runProviders(live: live); fflush(stdout); exit(success ? 0 : 1) }
         }
     }
     func windowShouldClose(_ sender: NSWindow) -> Bool { Self.model?.flushPending() ?? true }

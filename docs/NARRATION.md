@@ -1,12 +1,52 @@
-# Local narration
+# Narration
+
+Reader 0.3.2 has independent **Text cleanup** and **Narration audio** choices in **Reader → Settings (Command-comma)**:
+
+| Text cleanup | Narration audio | Processing |
+| --- | --- | --- |
+| Local models | Local models | R2M/DeBERTa cleanup and Kokoro speech on this Mac; no API request |
+| Local models | OpenAI API | Local cleanup, then only the prepared listening text goes to OpenAI for speech |
+| OpenAI API | Local models | OpenAI classifies source text for cleanup, then Kokoro voices the prepared script locally |
+| OpenAI API | OpenAI API | OpenAI cleanup and speech; no local neural model is loaded |
+
+The audio-provider choice selects its available voices and remembers that provider's previous voice. Cleanup and reference switches remain independent. A running job captures both providers, voice, speed and cleanup choices when it starts. Changing Settings affects future jobs; existing audio continues to play as saved. Use narration options → **Create new narration** to try another combination on an already narrated article. Prior managed recording files remain preserved.
+
+## OpenAI setup
+
+Enter a key in Settings → **OpenAI API key**, then select **Save key**. The field is masked and never prefilled with an existing secret. Keys entered here are stored in macOS Keychain, separate from reading data and backups. A configured `OPENAI_API_KEY` environment variable or the project's ignored `.env.local` also works; a Keychain key takes precedence. Removing a Keychain key does not revoke the OpenAI account key or remove an `.env.local` fallback.
+
+If you already prepared the local runtime below, its FFmpeg encoder works with OpenAI narration too. If you only want OpenAI for both stages, bring an [FFmpeg build](https://ffmpeg.org/download.html) with `libmp3lame` and the `loudnorm` filter. From the Reader checkout, with FFmpeg on your shell path, run:
+
+```sh
+mkdir -p ReaderRuntime/bin
+cp "$(command -v ffmpeg)" ReaderRuntime/bin/ffmpeg
+./scripts/build.sh release
+open build/Reader.app
+```
+
+Keep any libraries required by your FFmpeg installation on the Mac. Select **OpenAI API** for both stages in Settings and save your key. Use the full runtime setup below when you want to use a local model for either step.
+
+New API narration requires internet access and incurs usage charges. OpenAI cleanup receives extracted document text; OpenAI audio receives the prepared script. Neither receives Reader notes, the library database or the original PDF file. Saved MP3 playback makes no API request and works without a key or model weights.
+
+Cleanup uses [GPT-5.4 mini](https://developers.openai.com/api/docs/models/gpt-5.4-mini) through Responses with strict source-unit decisions, `store:false`, standard processing, no reasoning and low output verbosity. Original wording/order is retained; the model classifies removable boilerplate/reference blocks and short source-matching citation snippets rather than writing a paraphrase. Incomplete/refused/invalid plans are rejected. Ordinary prose cannot be removed through an inline citation edit. Classification can still be imperfect; the original and prepared script remain available, and cleanup/reference choices can be changed for another generation. `store:false` does not establish Zero Data Retention or a regional processing guarantee.
+
+Audio uses [GPT-Realtime-2.1 mini](https://developers.openai.com/api/docs/models/gpt-realtime-2.1-mini) through a [Realtime WebSocket](https://developers.openai.com/api/docs/guides/realtime-conversations), with independent bounded passages, the selected voice/speed and 24 kHz PCM. A complete response and a matching spoken transcript are required before a passage is accepted. PCM is assembled and encoded into one MP3 locally with FFmpeg. Interrupted/incomplete audio is not published; paid requests are not automatically retried. The current API avoids the retiring older Speech endpoint.
+
+Both API-only and mixed jobs use the same atomic library commit as local narration. Metadata records the actual cleanup/audio providers, engines, settings, request receipts and available token usage. Narration Details shows which providers produced the saved recording. The header's **Next narration** line describes future-generation defaults, rather than relabelling existing audio.
+
+## Local processing
 
 Reader’s narration feature reuses the local R2M text-cleanup and speech pipeline. The app prepares a narration script from the saved document, applies the local DeBERTa cleanup classifier and conservative R2M rules, synthesises speech with Kokoro, and encodes an MP3. Cleanup produces a reversible derivative rather than rewriting the author’s prose. It does not require an online account, API key, subscription or paid service. Source PDFs/articles and their annotations remain independent of generated narration.
 
 ## Generate and listen
 
-Select an article or text-layer PDF and open **Narration** using the headphones toolbar button or Shift-Command-L. Choose one of five American/British voices and a generation speed from 0.6× to 1.5×. Cleanup and inclusion of references/citations can be selected independently. **Generate MP3** runs locally while you keep reading; **Cancel** preserves existing audio.
+Select an article or text-layer PDF and use **Create narration** in the document header (or Shift-Command-L). Generation starts immediately using the defaults in **Reader → Settings… (Command-comma)**. A small **Generating narration…** progress bar replaces the button; the document remains available for reading, selection and notes. You can open another paper and return through the background status shown below the library list. One document generates at a time.
 
-A completed narration offers Play/Pause, a seek control, MP3 export and Reveal in Finder. **Prepared listening text** shows the spoken script. Generating another version preserves previous completed files in the library. The speed setting affects newly generated speech; it is not a playback-rate control.
+When the managed MP3 and database record are committed, the control becomes **Play narration**. The inline player includes Play/Pause, a draggable seek bar, elapsed time and total duration. Seeking before playback loads the saved recording without starting it. Playback position persists with the document, and existing recordings can play while another paper generates. Reopening a narrated article uses its saved audio and does not regenerate it; playback does not require the inference models.
+
+Settings remembers one of five American/British voices, generation speed from 0.6× to 1.5×, cleanup and inclusion of references/citations. A running job captures its defaults when it starts. These settings affect newly generated speech, not the playback rate or existing files. The narration options menu provides MP3 export, Reveal in Finder, **Narration details…** with prepared listening text, and explicit **Create new narration**. Generating another version preserves previous completed files in the library; cancellation/failure preserves the current recording.
+
+Generation runs while Reader is open. Quitting cancels an unfinished job and preserves existing recordings; it does not silently resume an incomplete generation on next launch. Completed narrations have no expiry timer and are kept in the library independently of the regenerable AI runtime and models.
 
 Scanned PDFs need a text layer before narration. Complex PDF layouts can still produce imperfect listening scripts; the saved original and reversible plan remain available for inspection. The optional R2M chat model is neither copied nor used.
 

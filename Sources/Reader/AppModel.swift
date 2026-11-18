@@ -30,8 +30,11 @@ final class AppModel: ObservableObject {
     @Published var status = "Saved locally"
     @Published var showImport = false
     @Published var showNarration = false
-    let narrator = NarrationController()
+    @Published var presentation: ReadingPresentation = .reader
+    let printer = DocumentPrinter()
+    let narrator: NarrationController
     private var narratorObservation: AnyCancellable?
+    private var printerObservation: AnyCancellable?
     @Published var jobs: [ImportJob] = []
     @Published var importing = false
     @Published var showNotes = true
@@ -48,7 +51,7 @@ final class AppModel: ObservableObject {
     var lastProgress: [String: ReadingProgress] = [:]
     var ephemeral = false
     var selectedItem: ReaderItem? { items.first { $0.id == selectedID } }
-    var allTags: [String] { Array(Set(items.filter { $0.trashedAt == nil }.flatMap(\.tags))).sorted() }
+    var allTags: [String] { ReaderTags.normalized(items.filter { $0.trashedAt == nil }.flatMap(\.tags)) }
     var visibleItems: [ReaderItem] {
         var matches = items.filter { item in
             switch section {
@@ -59,25 +62,32 @@ final class AppModel: ObservableObject {
             case .trash: return item.trashedAt != nil
             }
         }
-        if let tagFilter { matches = matches.filter { $0.tags.contains(tagFilter) } }
+        if let tagFilter { matches = matches.filter { ReaderTags.normalized($0.tags).contains { $0.caseInsensitiveCompare(tagFilter) == .orderedSame } } }
         if !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             let ids = Set((try? store?.search(query).map(\.id)) ?? [])
             matches = matches.filter { ids.contains($0.id) }
         }
         return matches
     }
-    init() {
+    init(narrationController: NarrationController? = nil) {
+        self.narrator = narrationController ?? NarrationController()
         narrator.onSaved = { [weak self] in
             guard let self else { return }
             do { try self.refresh(); self.status = "Narration saved in library" } catch { self.error = error.localizedDescription }
         }
+        narrator.onPlaybackSaved = { [weak self] id, seconds in
+            guard let self, let index = self.items.firstIndex(where: { $0.id == id }) else { return }
+            self.items[index].narration?.playbackPosition = seconds
+        }
         narratorObservation = narrator.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }
+        printer.onError = { [weak self] message in self?.error = message }
+        printerObservation = printer.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }
         let args = ProcessInfo.processInfo.arguments
-        if args.contains("--verify-imports") || args.contains("--verify-reading") || args.contains("--verify-narration") { ephemeral = true; return }
+        if args.contains(where: { $0.hasPrefix("--verify-") }) { ephemeral = true; return }
         let explicit = args.firstIndex(of: "--library").flatMap { $0 + 1 < args.count ? args[$0 + 1] : nil }
         ephemeral = explicit != nil
         let saved = UserDefaults.standard.string(forKey: "libraryPath")
-        let path = explicit ?? saved ?? LibraryStore.defaultRoot.path
+        let path = explicit ?? saved ?? ReaderBuild.libraryRoot.path
         openLibrary(URL(fileURLWithPath: path), create: explicit != nil ? args.contains("--create-library") : saved == nil)
     }
     func openLibrary(_ root: URL, create: Bool = false) {
@@ -100,6 +110,7 @@ final class AppModel: ObservableObject {
         guard flushPending() else { return }
         do {
             let loaded = try id.map { try store?.annotations(itemID: $0) ?? [] } ?? []
+            if selectedID != id { presentation = .reader }
             selectedID = id; annotations = loaded
         } catch { self.error = error.localizedDescription }
     }
@@ -108,6 +119,49 @@ final class AppModel: ObservableObject {
         catch { self.error = error.localizedDescription; status = "Save failed" }
     }
     func mutate(_ item: ReaderItem, _ body: (inout ReaderItem) -> Void) { var next = item; body(&next); update(next) }
+    var narrationActionTitle: String {
+        guard let item = selectedItem else { return "Create narration" }
+        if narrator.isGenerating(item.id) { return "Generating narration…" }
+        if item.narration != nil { return narrator.isPlaying && narrator.playbackItemID == item.id ? "Pause narration" : "Play narration" }
+        return "Create narration"
+    }
+    var canPerformNarrationAction: Bool {
+        guard let item = selectedItem, store != nil, !narrator.isGenerating(item.id) else { return false }
+        return item.narration != nil || (!narrator.isBusy && !importing)
+    }
+    func performNarrationAction() {
+        guard let item = selectedItem, let store, !narrator.isGenerating(item.id) else { return }
+        // Consult the durable record as well as the UI snapshot. The primary action
+        // must never regenerate an already-saved narration after a stale refresh.
+        let latest = (try? store.item(id: item.id)) ?? item
+        if latest.narration != nil { narrator.togglePlayback(item: latest, store: store) }
+        else if !importing { narrator.generate(item: latest, store: store) }
+    }
+    func regenerateNarration(_ item: ReaderItem) {
+        guard let store, !narrator.isBusy, !importing else { return }
+        narrator.generate(item: (try? store.item(id: item.id)) ?? item, store: store)
+    }
+    func showNarrationDocument(_ id: String?) {
+        guard let id, let item = items.first(where: { $0.id == id }) else { return }
+        section = item.trashedAt == nil ? .all : .trash; tagFilter = nil; query = ""; select(id)
+    }
+    @discardableResult func updateTags(itemID: String, tags: [String]) -> Bool {
+        do {
+            guard let store, var current = try store.item(id: itemID) else { throw LibraryError.invalid("This document is no longer in the library.") }
+            let known = allTags
+            current.tags = ReaderTags.normalized(tags.map { tag in known.first { $0.caseInsensitiveCompare(tag) == .orderedSame } ?? tag })
+            try store.updateItem(current); try refresh(); saved()
+            return true
+        } catch { self.error = error.localizedDescription; return false }
+    }
+    func printSelected() {
+        guard let item = selectedItem, let window = NSApp.keyWindow ?? NSApp.mainWindow else { return }
+        guard flushPending() else { return }
+        do {
+            guard let url = try store?.contentURL(for: item) else { return }
+            printer.printDocument(item, url: url, window: window)
+        } catch { self.error = error.localizedDescription }
+    }
     func save(_ annotation: ReaderAnnotation) {
         var annotation = annotation; annotation.updatedAt = Date()
         pendingAnnotations[annotation.id] = annotation

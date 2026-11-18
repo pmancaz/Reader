@@ -120,10 +120,52 @@ def arguments():
     parser.add_argument("--keep-references", action="store_true")
     parser.add_argument("--no-cleanup", action="store_true")
     parser.add_argument("--prepare-only", action="store_true")
+    parser.add_argument("--speak-only", action="store_true", help="Voice the already validated script without running cleanup")
     parser.add_argument("--item-id", default="")
     return parser.parse_args()
 
+def speak_prepared(args):
+    job = Path(args.job).expanduser().resolve()
+    script_file = job / "script.txt"
+    if args.prepare_only or (job / "audio.mp3").exists() or (job / "result.json").exists():
+        raise ValueError("Use a new, prepared narration job without an existing audio result.")
+    metadata = json.loads((job / "metadata.json").read_text(encoding="utf-8"))
+    script = script_file.read_text(encoding="utf-8")
+    if not script.strip() or metadata.get("itemID") != args.item_id or metadata.get("scriptSHA256") != digest(script_file):
+        raise ValueError("The prepared listening script does not match this document.")
+    if not math.isfinite(args.speed) or not 0.6 <= args.speed <= 1.5:
+        raise ValueError("Choose a speaking speed between 0.6 and 1.5.")
+    os.environ["R2M_MODEL_DIR"] = str(Path(args.models).expanduser().resolve())
+    os.environ["R2M_MODELS_MANIFEST"] = str(BACKEND / "models.json")
+    import model_paths
+    model_paths.model_dir("speech")
+    import reader
+    import loudness
+    if args.voice not in reader.VOICES:
+        raise ValueError("Choose a supported local speech voice.")
+    loudness.FFMPEG = Path(args.ffmpeg).expanduser().resolve()
+    def voicing(message, fraction=None):
+        publish(job / "progress.json", emit("voicing", 0.28 + 0.55 * (fraction or 0), message))
+    reader.speak({"text": script, "voice": args.voice, "speed": args.speed}, job, voicing)
+    def encoding(message, fraction=None):
+        publish(job / "progress.json", emit("encoding", 0.85 + 0.13 * (fraction or 0), message))
+    reader.export_mp3({"source": str(job / "speech.wav")}, job, encoding)
+    (job / "speech.mp3").replace(job / "audio.mp3")
+    import soundfile
+    duration = soundfile.info(job / "speech.wav").duration
+    metadata.update(engine="Kokoro-82M", provider="Mixed", voice=args.voice, speed=args.speed,
+                    duration=duration, mp3Bitrate=192000, mp3SampleRate=32000,
+                    speechProvider="local")
+    metadata.setdefault("modelRevisions", {}).update({m["id"]: m["revision"] for m in model_paths.load_manifest()["models"] if m["id"] == "speech"})
+    publish(job / "metadata.json", metadata)
+    (job / "speech.wav").unlink(missing_ok=True)
+    result = {"script": "script.txt", "plan": "plan.json", "audio": "audio.mp3", "metadata": "metadata.json", "duration": duration}
+    publish(job / "result.json", result)
+    emit("complete", 1, "Narration saved", result=result)
+
 def run(args):
+    if args.speak_only:
+        return speak_prepared(args)
     job = Path(args.job).expanduser().resolve()
     text_file = Path(args.text).expanduser().resolve()
     models = Path(args.models).expanduser().resolve()
@@ -178,6 +220,7 @@ def run(args):
     publish(job / "plan.json", plan)
     changes = change_list(plan)
     metadata = {"formatVersion": 1, "itemID": args.item_id, "title": args.title,
+                "cleanupProvider": "local", "speechProvider": "local",
                 "engine": "Kokoro-82M", "voice": args.voice, "speed": args.speed,
                 "cleanupEngine": "R2M reversible rules + DeBERTa-v3-large zero-shot",
                 "cleanupEnabled": not args.no_cleanup, "skipReferences": not args.keep_references,

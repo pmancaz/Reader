@@ -1,10 +1,14 @@
 # Architecture and deferred capture
 
-Reader is a local macOS app. SwiftUI supplies library controls; PDFKit supplies rendering, text selection, native page coordinates and navigation; WebKit renders only saved article content. Durable state belongs to ReaderCore and the configured library. Article extraction and network fetching belong to a reusable import pipeline rather than a particular button or window.
+Reader is a local macOS app. SwiftUI supplies library controls; PDFKit supplies rendering, text selection, native page coordinates and navigation. The offline WebKit reader renders saved article content. An explicitly selected Original view uses a separate ephemeral WebKit browser for the live website; it has no Reader script-message handlers or local-file read grants. Durable state belongs to ReaderCore and the configured library. Article extraction and network fetching belong to a reusable import pipeline rather than a particular button or window.
 
-Article preparation uses Mozilla Readability followed by DOMPurify. Importing a page is distinct from showing it: the reader must display sanitised local content and cached assets, not the original website. A failed import must not overwrite an existing document. URL and PDF entry points should submit the same prepared-document job, so later capture methods do not need their own storage logic.
+Article preparation uses Mozilla Readability followed by DOMPurify. Importing a page is distinct from showing it: the offline reader displays sanitised local content and cached assets. Live Original browsing does not modify this copy or its saved progress. A failed import must not overwrite an existing document. URL and PDF entry points should submit the same prepared-document job, so later capture methods do not need their own storage logic.
 
 PDF annotations are records separate from the imported PDF. Their anchors contain item identity, page index and rectangles in PDF page space. PDFKit applies display zoom and page rotation. Imported originals remain unchanged; an annotated PDF should only be written by a separate explicit export operation. Article anchors preserve exact quote, prefix/suffix context and position hints, allowing repeated quotations to be disambiguated. If a later article edit invalidates an anchor, the quotation and note must remain available even if navigation cannot resolve it.
+
+## Printing
+
+Articles print through a separate offline WKWebView and WebKit's native multipage print operation, with a print stylesheet that removes screen-height/overflow constraints and sets A4 with 15 mm margins. The NSPrintInfo uses matching A4 defaults; WebKit needs the CSS page margins as well. PDFKit prints a fresh PDFDocument with scale-to-fit and automatic rotation, preserving page content. Neither path prints a screenshot of the scrollable reader or writes to managed originals. Both use asynchronous sheet-based NSPrintOperation execution; synchronous WebKit print execution is unsuitable here. The standard panel supplies preview, page selection and PDF saving. A4 is the default; printer/paper choices can be changed by the user.
 
 ## macOS Share extension
 

@@ -1,5 +1,9 @@
 # Never commit personal library content, backups, or exports.
+.env
+.env.*
+!.env.example
 ReaderData/
+ReaderOpenAIData/
 **/ReaderData/
 *.sqlite
 *.sqlite-*
@@ -22,5 +26,6 @@ ReaderRuntime/
 .ReaderRuntime-setup.*/
 # Local publication drafts, demo libraries and evidence. Final screenshots are in docs/images.
 .publication/
+/TEMP-openai-migration-ledger.md
 __pycache__/
 *.pyc

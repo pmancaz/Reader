@@ -1,14 +1,14 @@
 # Reader
 
-A personal macOS library for saved articles, PDFs, notes and local narration.
+A personal macOS library for saved articles, PDFs, notes and narration.
 
 I wanted somewhere calm to keep the things I want to read. An article saved for later is useful, but I also wanted its highlights, my notes and my place in the text to stay together. Reader is my attempt at making that small part of the reading process easier to look after.
 
-It also brings in the local narration pipeline from [Read To Me](https://github.com/pmancaz/R2M). I can read a document, make notes around it, or prepare an MP3 to listen to away from the screen. The original stays intact.
+I brought in the narration workflow from [Read To Me](https://github.com/pmancaz/R2M) so I could listen to the same document away from the screen. I wanted to compare the local models with OpenAI, so in Reader 0.3.2 I can choose how it cleans up the text and how it produces the audio. I can use local models for the whole thing, use OpenAI for both steps, or mix the two.
 
 [Project page](https://pcarroll.au/tools/reader/) · [Installation](#installation) · [Storage and recovery](docs/STORAGE.md) · [Narration](docs/NARRATION.md)
 
-![Reader showing an example article, a highlighted passage and notes beside the text.](docs/images/reader-library.jpg)
+![Reader showing a tagged example article, its narration player, a highlighted passage and notes.](docs/images/reader-library.jpg)
 
 *Original example text in a separate demonstration library.*
 
@@ -17,8 +17,10 @@ It also brings in the local narration pipeline from [Read To Me](https://github.
 - Saves one or several article/PDF URLs, or copies imported PDF files into a managed library.
 - Keeps saved articles and their cached images available offline. PDFs use native PDFKit rendering, selection, search and zoom.
 - Stores highlights, passage notes, document notes, reading position and simple tags.
+- Prints clean, paginated A4 articles and fits existing PDF pages to A4, with a native preview and Save as PDF option.
+- Switches between the saved Reader view and the live original website. Original PDF view hides Reader highlights.
 - Provides Inbox, All items, Favourites, Archive and recoverable Trash, with search across document text and notes.
-- Generates narration locally with five English voices and an adjustable speed, then plays or exports a 192 kbps MP3.
+- Creates narration in the background with one click, then keeps an inline player with a seek bar and remembered position. Choose local models or OpenAI independently for text cleanup and audio. Export a 192 kbps MP3.
 - Creates consistent library snapshots, restores into a new folder, and exports notes and highlights as Markdown.
 - Includes light, dark and system appearance, article typography controls and a reading mode that hides the library.
 
@@ -43,11 +45,11 @@ For a development run:
 swift run --build-system native Reader
 ```
 
-The build script replaces only `build/Reader.app`. It does not remove `ReaderData`. The app is ad-hoc signed for local use; Developer ID signing and Apple notarisation for distribution have not been done. The current Command Line Tools setup needs `--build-system native`, which this Swift toolchain warns is deprecated. A future toolchain may need the default build system or full Xcode.
+The default build command replaces `build/Reader.app` and keeps the library in `ReaderData`. The app is signed for local use. The current Swift toolchain warns that `--build-system native` is deprecated. A future toolchain may need the default build system or full Xcode.
 
 ### Optional local narration
 
-Narration needs a separate Python/FFmpeg runtime and the speech/cleanup model sets. The current setup path reuses a **prepared R2M app** and its installed models. It does not automatically bootstrap those dependencies from a fresh Reader checkout.
+Running both stages locally needs a Python/FFmpeg runtime and the speech and cleanup model sets. The setup path reuses a **prepared R2M app** and its installed models.
 
 1. Follow [Read To Me's source installation instructions](https://github.com/pmancaz/R2M#installation) and build `R2M.app`. Put the R2M checkout beside Reader, or set `READER_NARRATION_SOURCE` to the prepared app's `Contents/Resources` folder.
 2. In R2M's Models window install **Speech** (about 330 MB) and **Enhanced PDF cleanup** (about 879 MB). Paper chat is not used by Reader.
@@ -68,17 +70,29 @@ READER_NARRATION_MODELS="$HOME/Library/Application Support/R2M/Models" \
 
 Setup copies the components into Reader-owned `ReaderRuntime`, verifies model checksums, and leaves R2M unchanged. The rebuilt app includes its Python/FFmpeg runtime; model weights remain in `ReaderRuntime/Models`. A narration-enabled app is about 1.1 GB, plus about 1.1 GB of model weights. After setup, Reader no longer depends on R2M remaining installed. [The narration guide](docs/NARRATION.md) explains paths, provenance and recovery.
 
+### Optional OpenAI narration
+
+Choose **OpenAI API** for **Text cleanup**, **Narration audio**, or both in **Reader → Settings… (⌘,)**. Enter your own API key and choose **Save key** to store it in macOS Keychain. OpenAI receives the text needed for the stages you choose. Generation requires internet access and incurs API usage charges. The [narration guide](docs/NARRATION.md#openai-setup) explains which text is sent and how to build with just FFmpeg if you want to run both stages through OpenAI.
+
+![Reader Settings with local models selected for text cleanup and OpenAI selected for narration audio.](docs/images/reader-narration-settings.jpg)
+
 ## Using it
 
 Use **⌘N** to import URLs and **⌘O** to choose PDFs; PDFs can also be dropped into the window. Select some text to highlight it or attach a note. The notes panel also accepts a note for the whole document. **⌘F** searches the open document, and **⇧⌘F** focuses library search.
 
-Open the **headphones** control, or press **⇧⌘L**, for narration. Choose a voice and speed, decide whether cleanup and references should be included, then generate the MP3. The prepared text can be inspected alongside the saved audio. Reader keeps a reversible cleanup plan as a file; it does not yet provide R2M's per-change restoration editor.
+Use **Tags** in the document header to add subjects or projects, reuse existing tags, or remove a tag. Select a tag beside a document or in the sidebar to filter the library. Tags are included in library search and persist with the paper.
 
-![Reader's narration panel showing a generated MP3, playback controls and prepared listening text.](docs/images/reader-narration.jpg)
+The **Reader / Original** switch is also in the header. Reader is the saved offline article; Original loads the live website, including its layout and scripts, in a separate ephemeral browser with no access to Reader's library bridge. It needs internet access and the publisher may still require a login or block embedded browsing. Use Open in Browser when needed. Switching back restores the saved reading position. For PDFs, both modes use the original page layout; Original hides Reader's highlight overlays. Following a saved passage note returns to Reader view.
 
-*The narration is a separate listening copy, kept with its source document.*
+Choose **Print…** or press **⌘P** for A4 output with 15 mm margins. Articles use the clean saved copy, including when Original view is selected; paragraphs paginate, long code and references wrap, and figures fit the printable area. Existing PDF pages are scaled to fit A4 rather than reflowed. The macOS print panel provides preview, page selection and **PDF → Save as PDF**. Printing leaves the managed source unchanged and does not include the notes sidebar or Reader highlight overlays. You can choose a different paper size in the print panel; A4 portrait is Reader's starting layout.
 
-There is no account, subscription, hosted AI backend or paid service. Fetching an article, preparing a runtime and downloading models need internet access. Reading saved content and generating narration use local files once the required content and models are installed.
+Use **Create narration** at the top of the document, or press **⇧⌘L**. It uses the defaults in **Reader → Settings… (⌘,)** and shows a small progress bar while you continue reading, make notes or open another paper. Voice, generation speed, cleanup and reference settings persist between launches; changing them does not alter an already-running job or saved recording.
+
+When ready, the same control becomes **Play narration**. Play/Pause, a draggable seek bar, elapsed time and total duration stay beside the document. Seeking also works before playback starts, and the playback position is remembered. Narration options provide MP3 export, the prepared script and an explicit **Create new narration** action.
+
+Completed audio is durable library content linked from the article's database record, not an expiring generation cache. Reopening the article later uses the existing MP3 without running the AI models again. Keep the whole library folder and its backups. Reader keeps a reversible cleanup plan as a file; it does not yet provide R2M's per-change restoration editor.
+
+Saved reading and playback work offline. Fetching an article, viewing the live original website, downloading dependencies and using OpenAI need internet access. Both local stages run offline once the document and the models are installed.
 
 ## Looking after the library
 
@@ -112,7 +126,7 @@ swift run --build-system native ReaderCoreChecks
 ./scripts/verify.sh --narration
 ```
 
-[The verification record](docs/VERIFICATION.md) describes the observed checks and their limits. They cover offline article images, quote/context anchors, rotated PDF highlights, persistence, duplicates and failures, complete restore, real local narration and preservation of each PDF page's text. Tests use separate temporary libraries, not personal reading data.
+[The verification record](docs/VERIFICATION.md) describes the checks and their limits, including all four narration combinations and both mixed combinations on a PDF with a rotated page. The default check suite runs with a reading-only build. The full narration suite needs the optional runtime and models. Live API checks are separate and use only original test fixtures.
 
 JavaScript-only or authenticated pages may not extract, and Reader does not bypass paywalls. Articles are limited to 12 MB of HTML, PDFs to 100 MB, and cached raster images to 8 MB each (up to 60 images). Missing images produce a warning. Encrypted PDFs need unlocking first. Scanned PDFs remain viewable, but text selection, search and narration need a text layer; OCR is not included. Unusual PDF layouts and automatic cleanup still need checking against the source.
 

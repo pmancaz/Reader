@@ -96,7 +96,7 @@ struct MetadataPanel: View {
             LabeledContent("Added", value: item.addedAt.formatted())
             if let author = item.author { LabeledContent("Author", value: author) }
             if let url = item.originalURL { Text(url).font(.caption).foregroundStyle(.secondary).textSelection(.enabled) }
-            HStack { Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction); Spacer(); Button("Save") { var next = item; next.title = title.trimmingCharacters(in: .whitespacesAndNewlines); next.tags = Array(Set(tags.split(separator: ",").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty })).sorted(); model.update(next); dismiss() }.keyboardShortcut(.defaultAction).disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) }
+            HStack { Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction); Spacer(); Button("Save") { var next = model.items.first { $0.id == item.id } ?? item; next.title = title.trimmingCharacters(in: .whitespacesAndNewlines); next.tags = ReaderTags.parse(tags); model.update(next); dismiss() }.keyboardShortcut(.defaultAction).disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) }
         }.padding(24).frame(width: 470).onAppear { title = item.title; tags = item.tags.joined(separator: ", ") }
     }
 }

@@ -1,0 +1,31 @@
+/* WebKit uses @page for its printable area; AppKit has the same A4 defaults. */
+@page { size: A4; margin: 15mm; }
+html, body {
+  color-scheme: light !important; background: white !important; color: black !important;
+  margin: 0 !important; padding: 0 !important; width: auto !important;
+  min-width: 0 !important; max-width: none !important; height: auto !important;
+  max-height: none !important; overflow: visible !important;
+  font: 11pt/1.5 Georgia, serif !important; overflow-wrap: anywhere;
+}
+article, main, #reader-content, section, div {
+  width: auto !important; min-width: 0 !important; max-width: 100% !important;
+  height: auto !important; max-height: none !important; overflow: visible !important;
+}
+h1 { font-size: 22pt; line-height: 1.2; margin: 0 0 16pt; }
+h2 { font-size: 15pt; } h3, h4 { font-size: 12pt; }
+h1, h2, h3, h4, h5, h6 { break-after: avoid; page-break-after: avoid; }
+p, li { orphans: 3; widows: 3; }
+p, ul, ol, blockquote, pre, figure, table { margin-top: 10pt; margin-bottom: 10pt; }
+img, svg { display: block; max-width: 100% !important; max-height: 210mm !important; width: auto; height: auto; object-fit: contain; break-inside: avoid; page-break-inside: avoid; }
+figure { margin-left: 0; margin-right: 0; break-inside: avoid; page-break-inside: avoid; }
+figcaption { font-size: 9pt; color: #444; }
+pre, code { white-space: pre-wrap !important; overflow-wrap: anywhere !important; word-break: break-word; }
+pre { font-size: 9pt; overflow: visible !important; max-width: 100%; }
+table { display: table !important; table-layout: fixed; width: 100% !important; border-collapse: collapse; overflow: visible !important; font-size: 9pt; }
+thead { display: table-header-group; } tfoot { display: table-footer-group; }
+tr { break-inside: avoid; page-break-inside: avoid; }
+td, th { overflow-wrap: anywhere; word-break: break-word; padding: 5pt; border: .5pt solid #999; }
+blockquote { margin-left: 0; margin-right: 0; padding-left: 12pt; border-left: 2pt solid #aaa; }
+a { color: black; text-decoration: underline; overflow-wrap: anywhere; }
+mark { color: black; background: transparent; }
+img:not([src]) { display: none; }

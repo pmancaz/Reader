@@ -28,6 +28,7 @@ struct ArticleReader: NSViewRepresentable {
     func updateNSView(_ view: WKWebView, context: Context) {
         let coordinator = context.coordinator
         bridge.webView = view; bridge.pdfView = nil; bridge.item = item
+        bridge.isOriginal = false
         coordinator.appearance = [fontSize, lineSpacing, readingWidth, dark]
         coordinator.annotations = annotations
         if coordinator.loaded != item.id {
@@ -62,7 +63,7 @@ struct ArticleReader: NSViewRepresentable {
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
             rendering = ""; styling = ""; ready = true
             update()
-            webView.evaluateJavaScript("window.ReaderAPI.restore(\(fraction))")
+            webView.evaluateJavaScript("window.ReaderAPI.restore(\(fraction))") { [weak self] _, _ in self?.bridge.resumeNavigation() }
         }
         func update() {
             guard let web else { return }
